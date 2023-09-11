@@ -1,3 +1,5 @@
+# https://github.com/syoyo/tinydng/blob/release/tiny_dng_writer.h
+
 import argparse
 import os
 
@@ -62,6 +64,8 @@ if args.write_mask:
     mask_path = f"{ir_path}.mask.{threshold}.tiff"
     cv2.imwrite(mask_path, thresh_mask)
 
+os.remove(ir_path)
+
 def adjust_gamma(image, gamma=1.0):
     inv_gamma = 1.0 / gamma
     table = ((np.arange(0, 65536) / 65535) ** inv_gamma) * 65535
@@ -92,9 +96,52 @@ if args.subfolder:
 else:
     output_dir = os.path.dirname(input_path)
 
+# channels = [1,2]
+# for channel in channels:
+    # cleaned_rgb_img[:,:,channel] = np.zeros(rgb_img.shape[0:2]).astype(np.uint16)
+
+
 output_basename = os.path.splitext(os.path.basename(input_path))[0]
 output_path = os.path.join(output_dir, output_basename + "-cleaned.tiff")
 
 cv2.imwrite(output_path, cleaned_rgb_img, params=(cv2.IMWRITE_TIFF_COMPRESSION, 32946))
 
-os.remove(ir_path)
+
+
+from pidng.core import RAW2DNG, DNGTags, Tag
+from pidng.defs import *
+
+width = ir_img.shape[1]
+height = ir_img.shape[0]
+
+
+# ['254', '256', '257', '258', '259', '262', '273', '277', '278', '279', '282', '283', '284', '296']
+t = DNGTags()
+# t.set(Tag.NewSubfileType, 34892) # 254
+t.set(Tag.ImageWidth, width) # 256
+t.set(Tag.ImageLength, height) # 257
+t.set(Tag.BitsPerSample, 16) # 258
+# 259: compression
+t.set(Tag.PhotometricInterpretation, 34892) # 262
+# 273 (StripOffsets)
+t.set(Tag.SamplesPerPixel, 3) # 277
+# 278 (RowsPerStrip)
+# 282 XResolution, 283 YResolution: '3600/1'
+t.set(Tag.PlanarConfiguration, 1) # 284
+# 296: ResolutionUnit: 2
+t.set(Tag.Orientation, Orientation.Horizontal)
+t.set(Tag.DNGVersion, DNGVersion.V1_4)
+t.set(Tag.DNGBackwardVersion, DNGVersion.V1_2)
+
+
+t.set(Tag.UniqueCameraModel, 'Silverfast RAW')
+t.set(Tag.Orientation, 1)
+
+dng_output_path = os.path.join(output_dir, output_basename + "-cleaned.dng")
+cleaned_rgb_img = np.flip(cleaned_rgb_img, 2)
+img_reshaped = cleaned_rgb_img.reshape(height, width*3)
+
+# save to dng file
+r = RAW2DNG()
+r.options(t, path="", compress=False)
+r.convert(cleaned_rgb_img, filename=dng_output_path)
