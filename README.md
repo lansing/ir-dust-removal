@@ -12,6 +12,12 @@ https://forums.negativelabpro.com/t/requesting-a-proper-isrd-pipeline/3701/17?pa
 
 ## Usage
 
+Install dependencies
+```
+brew install little-cms2 libjpeg
+set -gx LDFLAGS "-L/opt/homebrew/opt/lcms2/lib -L/opt/homebrew/opt/libjpeg/lib"
+set -gx CPPFLAGS "-I/opt/homebrew/opt/lcms2/include -I/opt/homebrew/opt/libjpg/include"
+```
 
 ```
 pip install -r requirements.txt
